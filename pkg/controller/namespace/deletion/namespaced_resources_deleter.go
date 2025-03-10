@@ -528,12 +528,10 @@ func (d *namespacedResourcesDeleter) deleteAllContent(ctx context.Context, ns *v
 		gvrToNumRemaining:        map[schema.GroupVersionResource]int{},
 		finalizersToNumRemaining: map[string]int{},
 	}
+	podsGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.OrderedNamespaceDeletion) {
-		// TODO: remove this log when the feature gate is enabled by default
-		logger.V(5).Info("Namespace controller - OrderedNamespaceDeletion feature gate is enabled", "namespace", namespace)
+	if _, hasPods := groupVersionResources[podsGVR]; hasPods && utilfeature.DefaultFeatureGate.Enabled(features.OrderedNamespaceDeletion) {
 		// Ensure all pods in the namespace are deleted first
-		podsGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
 		gvrDeletionMetadata, err := d.deleteAllContentForGroupVersionResource(ctx, podsGVR, namespace, namespaceDeletedAt)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to delete pods for namespace: %s, err: %w", namespace, err))
@@ -555,12 +553,21 @@ func (d *namespacedResourcesDeleter) deleteAllContent(ctx context.Context, ns *v
 		// Check if any pods remain before proceeding to delete other resources
 		if numRemainingTotals.gvrToNumRemaining[podsGVR] > 0 {
 			logger.V(5).Info("Namespace controller - pods still remain, delaying deletion of other resources", "namespace", namespace)
+			if hasChanged := conditionUpdater.Update(ns); hasChanged {
+				if _, err = d.nsClient.UpdateStatus(ctx, ns, metav1.UpdateOptions{}); err != nil {
+					utilruntime.HandleError(fmt.Errorf("couldn't update status condition for namespace %q: %w", namespace, err))
+				}
+			}
 			return estimate, utilerrors.NewAggregate(errs)
 		}
 	}
 
 	// Proceed with deleting other resources in the namespace
 	for gvr := range groupVersionResources {
+		if utilfeature.DefaultFeatureGate.Enabled(features.OrderedNamespaceDeletion) && gvr.Group == podsGVR.Group &&
+			gvr.Version == podsGVR.Version && gvr.Resource == podsGVR.Resource {
+			continue
+		}
 		gvrDeletionMetadata, err := d.deleteAllContentForGroupVersionResource(ctx, gvr, namespace, namespaceDeletedAt)
 		if err != nil {
 			// If there is an error, hold on to it but proceed with all the remaining

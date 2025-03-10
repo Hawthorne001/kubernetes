@@ -640,10 +640,6 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		// Group=coordination.k8s.io, Version=v1beta1
 	case coordinationv1beta1.SchemeGroupVersion.WithKind("Lease"):
 		return &applyconfigurationscoordinationv1beta1.LeaseApplyConfiguration{}
-	case coordinationv1beta1.SchemeGroupVersion.WithKind("LeaseCandidate"):
-		return &applyconfigurationscoordinationv1beta1.LeaseCandidateApplyConfiguration{}
-	case coordinationv1beta1.SchemeGroupVersion.WithKind("LeaseCandidateSpec"):
-		return &applyconfigurationscoordinationv1beta1.LeaseCandidateSpecApplyConfiguration{}
 	case coordinationv1beta1.SchemeGroupVersion.WithKind("LeaseSpec"):
 		return &applyconfigurationscoordinationv1beta1.LeaseSpecApplyConfiguration{}
 
@@ -1634,6 +1630,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &resourcev1alpha3.DeviceRequestAllocationResultApplyConfiguration{}
 	case v1alpha3.SchemeGroupVersion.WithKind("DeviceSelector"):
 		return &resourcev1alpha3.DeviceSelectorApplyConfiguration{}
+	case v1alpha3.SchemeGroupVersion.WithKind("DeviceSubRequest"):
+		return &resourcev1alpha3.DeviceSubRequestApplyConfiguration{}
 	case v1alpha3.SchemeGroupVersion.WithKind("NetworkDeviceData"):
 		return &resourcev1alpha3.NetworkDeviceDataApplyConfiguration{}
 	case v1alpha3.SchemeGroupVersion.WithKind("OpaqueDeviceConfiguration"):
@@ -1696,6 +1694,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationsresourcev1beta1.DeviceRequestAllocationResultApplyConfiguration{}
 	case resourcev1beta1.SchemeGroupVersion.WithKind("DeviceSelector"):
 		return &applyconfigurationsresourcev1beta1.DeviceSelectorApplyConfiguration{}
+	case resourcev1beta1.SchemeGroupVersion.WithKind("DeviceSubRequest"):
+		return &applyconfigurationsresourcev1beta1.DeviceSubRequestApplyConfiguration{}
 	case resourcev1beta1.SchemeGroupVersion.WithKind("NetworkDeviceData"):
 		return &applyconfigurationsresourcev1beta1.NetworkDeviceDataApplyConfiguration{}
 	case resourcev1beta1.SchemeGroupVersion.WithKind("OpaqueDeviceConfiguration"):

@@ -58,9 +58,6 @@ const (
 	// Enables usage of any object for volume data source in PVCs
 	AnyVolumeDataSource featuregate.Feature = "AnyVolumeDataSource"
 
-	// owner: @tallclair
-	AppArmor featuregate.Feature = "AppArmor"
-
 	// owner: @liggitt
 	// kep: https://kep.k8s.io/4601
 	//
@@ -153,6 +150,21 @@ const (
 	// Enable usage of Provision of PVCs from snapshots in other namespaces
 	CrossNamespaceVolumeDataSource featuregate.Feature = "CrossNamespaceVolumeDataSource"
 
+	// owner: @thockin
+	// kep: http://kep.k8s.io/5073:
+	// beta: v1.33
+	//
+	// Enable declarative validation of APIs, where declared.
+	DeclarativeValidation featuregate.Feature = "DeclarativeValidation"
+
+	// owner: @thockin
+	// kep: http://kep.k8s.io/5073:
+	// beta: v1.33
+	//
+	// Enable declarative_validation_mismatch metric which outputs # of mismatch occurrences between
+	// hand-written and declarative validation rules.
+	DeclarativeValidationMismatchMetric featuregate.Feature = "DeclarativeValidationMismatchMetric"
+
 	// owner: @atiratree
 	// kep: http://kep.k8s.io/3973
 	//
@@ -200,6 +212,14 @@ const (
 	// This feature gate is currently defined in KEP #4381. The intent
 	// is to move it into a separate KEP.
 	DRAAdminAccess featuregate.Feature = "DRAAdminAccess"
+
+	// owner: @mortent
+	// kep: http://kep.k8s.io/4816
+	//
+	// Enables support for providing a prioritized list of requests
+	// for resources. The first entry that can be satisfied will
+	// be selected.
+	DRAPrioritizedList featuregate.Feature = "DRAPrioritizedList"
 
 	// owner: @pohly
 	// kep: http://kep.k8s.io/4381
@@ -489,6 +509,12 @@ const (
 	//
 	// Allows zero value for sleep duration in SleepAction in container lifecycle hooks
 	PodLifecycleSleepActionAllowZero featuregate.Feature = "PodLifecycleSleepActionAllowZero"
+
+	// owner: @natasha41575
+	// kep: http://kep.k8s.io/5067
+	//
+	// Enables the pod to report status.ObservedGeneration to reflect the generation of the last observed podspec.
+	PodObservedGenerationTracking featuregate.Feature = "PodObservedGenerationTracking"
 
 	// owner: @Huang-Wei
 	// kep: https://kep.k8s.io/3521

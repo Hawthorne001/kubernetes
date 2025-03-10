@@ -32,8 +32,6 @@ type backoffQueuer interface {
 	// isPodBackingoff returns true if a pod is still waiting for its backoff timer.
 	// If this returns true, the pod should not be re-tried.
 	isPodBackingoff(podInfo *framework.QueuedPodInfo) bool
-	// getBackoffTime returns the time that podInfo completes backoff
-	getBackoffTime(podInfo *framework.QueuedPodInfo) time.Time
 	// popEachBackoffCompleted run fn for all pods from podBackoffQ and podErrorBackoffQ that completed backoff while popping them.
 	popEachBackoffCompleted(logger klog.Logger, fn func(pInfo *framework.QueuedPodInfo))
 
@@ -43,8 +41,9 @@ type backoffQueuer interface {
 	podMaxBackoffDuration() time.Duration
 
 	// add adds the pInfo to backoffQueue.
+	// The event should show which event triggered this addition and is used for the metric recording.
 	// It also ensures that pInfo is not in both queues.
-	add(logger klog.Logger, pInfo *framework.QueuedPodInfo)
+	add(logger klog.Logger, pInfo *framework.QueuedPodInfo, event string)
 	// update updates the pod in backoffQueue if oldPodInfo is already in the queue.
 	// It returns new pod info if updated, nil otherwise.
 	update(newPod *v1.Pod, oldPodInfo *framework.QueuedPodInfo) *framework.QueuedPodInfo
@@ -112,11 +111,17 @@ func (bq *backoffQueue) isPodBackingoff(podInfo *framework.QueuedPodInfo) bool {
 	return boTime.After(bq.clock.Now())
 }
 
-// getBackoffTime returns the time that podInfo completes backoff
+// getBackoffTime returns the time that podInfo completes backoff.
+// It caches the result in podInfo.BackoffExpiration and returns this value in subsequent calls.
+// The cache will be cleared when this pod is poped from the scheduling queue again (i.e., at activeQ's pop),
+// because of the fact that the backoff time is calculated based on podInfo.Attempts,
+// which doesn't get changed until the pod's scheduling is retried.
 func (bq *backoffQueue) getBackoffTime(podInfo *framework.QueuedPodInfo) time.Time {
-	duration := bq.calculateBackoffDuration(podInfo)
-	backoffTime := podInfo.Timestamp.Add(duration)
-	return backoffTime
+	if podInfo.BackoffExpiration.IsZero() {
+		duration := bq.calculateBackoffDuration(podInfo)
+		podInfo.BackoffExpiration = podInfo.Timestamp.Add(duration)
+	}
+	return podInfo.BackoffExpiration
 }
 
 // calculateBackoffDuration is a helper function for calculating the backoffDuration
@@ -168,8 +173,9 @@ func (bq *backoffQueue) popEachBackoffCompleted(logger klog.Logger, fn func(pInf
 }
 
 // add adds the pInfo to backoffQueue.
+// The event should show which event triggered this addition and is used for the metric recording.
 // It also ensures that pInfo is not in both queues.
-func (bq *backoffQueue) add(logger klog.Logger, pInfo *framework.QueuedPodInfo) {
+func (bq *backoffQueue) add(logger klog.Logger, pInfo *framework.QueuedPodInfo, event string) {
 	// If pod has empty both unschedulable plugins and pending plugins,
 	// it means that it failed because of error and should be moved to podErrorBackoffQ.
 	if pInfo.UnschedulablePlugins.Len() == 0 && pInfo.PendingPlugins.Len() == 0 {
@@ -178,7 +184,9 @@ func (bq *backoffQueue) add(logger klog.Logger, pInfo *framework.QueuedPodInfo) 
 		err := bq.podBackoffQ.Delete(pInfo)
 		if err == nil {
 			logger.Error(nil, "BackoffQueue add() was called with a pod that was already in the podBackoffQ", "pod", klog.KObj(pInfo.Pod))
+			return
 		}
+		metrics.SchedulerQueueIncomingPods.WithLabelValues("backoff", event).Inc()
 		return
 	}
 	bq.podBackoffQ.AddOrUpdate(pInfo)
@@ -186,7 +194,9 @@ func (bq *backoffQueue) add(logger klog.Logger, pInfo *framework.QueuedPodInfo) 
 	err := bq.podErrorBackoffQ.Delete(pInfo)
 	if err == nil {
 		logger.Error(nil, "BackoffQueue add() was called with a pod that was already in the podErrorBackoffQ", "pod", klog.KObj(pInfo.Pod))
+		return
 	}
+	metrics.SchedulerQueueIncomingPods.WithLabelValues("backoff", event).Inc()
 }
 
 // update updates the pod in backoffQueue if oldPodInfo is already in the queue.
